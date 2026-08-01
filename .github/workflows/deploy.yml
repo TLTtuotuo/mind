@@ -1,0 +1,66 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script_stop: true
+          script: |
+            set -e
+
+            # Navigate to the project directory
+            cd /opt/mind-bridge
+
+            # Pull latest code
+            echo "==> Pulling latest code..."
+            git pull origin main
+
+            # Write .env file with secrets from GitHub Actions
+            echo "==> Writing environment configuration..."
+            cat > .env << EOF
+            POSTGRES_USER=${{ secrets.POSTGRES_USER }}
+            POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+            POSTGRES_DB=${{ secrets.POSTGRES_DB }}
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            CLIENT_URL=http://${{ secrets.SSH_HOST }}
+            EOF
+
+            # Stop existing containers, rebuild images, start in detached mode
+            echo "==> Rebuilding and restarting containers..."
+            docker compose -f docker-compose.prod.yml down
+            docker compose -f docker-compose.prod.yml up -d --build
+
+            # Clean up unused images (free disk space)
+            echo "==> Cleaning up unused Docker images..."
+            docker image prune -f
+
+            # Wait for server health check to pass
+            echo "==> Waiting for server to become healthy..."
+            for i in $(seq 1 30); do
+              STATUS=$(docker inspect --format='{{.State.Health.Status}}' mindbridge-server 2>/dev/null || echo "unknown")
+              if [ "$STATUS" = "healthy" ]; then
+                echo "==> Server is healthy!"
+                break
+              fi
+              echo "   Attempt $i/30: server status is '$STATUS', waiting..."
+              sleep 5
+            done
+
+            echo "==> Deploy complete!"

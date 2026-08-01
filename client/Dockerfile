@@ -1,12 +1,27 @@
-FROM node:20-alpine
-
+# ===== Stage 1: Build =====
+FROM node:20-alpine AS builder
 WORKDIR /app
 
+# Install dependencies
 COPY package*.json ./
 RUN npm ci
 
+# Copy source and build (tsc -b && vite build)
 COPY . .
+RUN npm run build
 
-EXPOSE 5173
+# ===== Stage 2: Serve with Nginx =====
+FROM nginx:alpine
 
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+# Remove default nginx config
+RUN rm /etc/nginx/conf.d/default.conf
+
+# Copy our custom nginx config
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Copy built static assets from Stage 1
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]

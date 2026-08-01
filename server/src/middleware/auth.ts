@@ -2,7 +2,12 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../db';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'mind-bridge-dev-secret';
+const JWT_SECRET = process.env.JWT_SECRET || '';
+
+// Fail fast in production if JWT_SECRET is not configured
+if (!JWT_SECRET && process.env.NODE_ENV === 'production') {
+  throw new Error('JWT_SECRET environment variable is required in production');
+}
 
 export interface JwtPayload {
   userId: string;
