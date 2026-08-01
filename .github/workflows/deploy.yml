@@ -26,7 +26,7 @@ jobs:
           docker save node:20-alpine nginx:alpine mindbridge-server:latest mindbridge-client:latest -o /tmp/images.tar
 
       - name: Copy images to server
-        uses: appleboy/scp-action@v0
+        uses: appleboy/scp-action@master
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
