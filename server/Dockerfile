@@ -2,6 +2,9 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
+# Install OpenSSL (required by Prisma)
+RUN apk add --no-cache openssl
+
 # Install ALL dependencies (including devDependencies for TypeScript compile)
 COPY package*.json ./
 RUN npm ci
@@ -18,6 +21,9 @@ RUN npm run build
 # ===== Stage 2: Production Runtime =====
 FROM node:20-alpine AS production
 WORKDIR /app
+
+# Install OpenSSL (required by Prisma engine on Alpine)
+RUN apk add --no-cache openssl
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
