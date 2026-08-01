@@ -8,13 +8,14 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-mindbridge}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mindbridge123}
       POSTGRES_DB: ${POSTGRES_DB:-mindbridge}
+      POSTGRES_HOST_AUTH_METHOD: trust
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U mindbridge -d mindbridge"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -29,7 +30,7 @@ services:
       dockerfile: Dockerfile
     container_name: mindbridge-server
     environment:
-      DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public"
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-mindbridge}@postgres:5432/${POSTGRES_DB:-mindbridge}?schema=public"
       JWT_SECRET: ${JWT_SECRET}
       PORT: "3001"
       CLIENT_URL: ${CLIENT_URL}
