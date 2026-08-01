@@ -8,34 +8,17 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build images
-        run: |
-          docker pull node:20-alpine
-          docker pull nginx:alpine
-          docker build -t mindbridge-server:latest ./server
-          docker build -t mindbridge-client:latest ./client
-
-      - name: Setup SSH and deploy
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -p ${{ secrets.SSH_PORT || 22 }} ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
-
-          echo "==> Compressing and uploading images..."
-          docker save node:20-alpine nginx:alpine mindbridge-server:latest mindbridge-client:latest | gzip | ssh -p ${{ secrets.SSH_PORT || 22 }} ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "gunzip | docker load"
-
-          echo "==> Deploying..."
-          ssh -p ${{ secrets.SSH_PORT || 22 }} ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} /bin/sh << 'DEPLOY_SCRIPT'
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script: |
             set -e
             cd /app/mind
 
@@ -43,31 +26,19 @@ jobs:
             git pull origin main
 
             echo "==> Writing environment configuration..."
-            cat > .env << 'ENVEOF'
+            cat > .env << EOF
             POSTGRES_USER=mindbridge
             POSTGRES_PASSWORD=mindbridge123
             POSTGRES_DB=mindbridge
             JWT_SECRET=mind-bridge-prod-secret
             CLIENT_URL=http://localhost
-            ENVEOF
+            EOF
 
             echo "==> Restarting containers..."
             docker compose -f docker-compose.prod.yml down
-            docker compose -f docker-compose.prod.yml up -d --pull never
+            docker compose -f docker-compose.prod.yml up -d --build
 
             echo "==> Cleaning up..."
             docker image prune -f
 
-            echo "==> Waiting for server health..."
-            for i in $(seq 1 30); do
-              STATUS=$(docker inspect --format="{{.State.Health.Status}}" mindbridge-server 2>/dev/null || echo "unknown")
-              if [ "$STATUS" = "healthy" ]; then
-                echo "==> Server is healthy!"
-                break
-              fi
-              echo "   Attempt $i/30: server status is '$STATUS', waiting..."
-              sleep 5
-            done
-
             echo "==> Deploy complete!"
-          DEPLOY_SCRIPT
