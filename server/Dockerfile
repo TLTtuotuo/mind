@@ -23,13 +23,11 @@ WORKDIR /app
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001
 
-# Install ONLY production dependencies at exact locked versions
+# Install ONLY production dependencies (prisma is now in dependencies for migrate)
 COPY package*.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 
-# Overwrite @prisma/client with the generated client from Stage 1
-# (npm ci --omit=dev installs the default @prisma/client; the generated one
-#  contains the actual query engine binary and TypeScript types)
+# Copy generated prisma client from builder (includes the query engine binary)
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
 # Copy compiled output
