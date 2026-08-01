@@ -35,7 +35,7 @@ jobs:
             EOF
 
             echo "==> Restarting containers..."
-            docker compose -f docker-compose.prod.yml down
+            docker rm -f mindbridge-db mindbridge-server mindbridge-client 2>/dev/null || true
             docker compose -f docker-compose.prod.yml up -d --build
 
             echo "==> Cleaning up..."
