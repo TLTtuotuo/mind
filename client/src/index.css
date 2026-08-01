@@ -1,0 +1,151 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply min-h-screen;
+    touch-action: manipulation;
+  }
+
+  /* 学生端大按钮动画 */
+  .btn-giant {
+    @apply w-full py-6 text-xl font-bold rounded-3xl shadow-lg
+           active:scale-95 transition-all duration-150
+           flex flex-col items-center justify-center gap-2;
+    min-height: 120px;
+  }
+
+  .btn-giant-primary {
+    @apply btn-giant bg-warm-500 text-white hover:bg-warm-600
+           shadow-warm-200 shadow-lg;
+  }
+
+  .btn-giant-secondary {
+    @apply btn-giant bg-calm-500 text-white hover:bg-calm-600
+           shadow-calm-200 shadow-lg;
+  }
+
+  .btn-giant-third {
+    @apply btn-giant bg-mind-100 text-mind-700 hover:bg-mind-200
+           border-2 border-mind-300;
+  }
+
+  /* 时段卡片 */
+  .slot-card {
+    @apply p-4 border-2 border-warm-200 rounded-2xl text-center
+           active:bg-warm-100 active:border-warm-400
+           transition-all cursor-pointer;
+    min-height: 72px;
+  }
+
+  .slot-card:hover {
+    @apply border-warm-400 bg-warm-50 shadow-md;
+  }
+
+  /* 页面容器 */
+  .page-container {
+    @apply max-w-lg mx-auto px-4 py-6 pb-24;
+  }
+
+  .page-title {
+    @apply text-2xl font-black text-gray-800 mb-6;
+  }
+
+  /* 底部导航占位 */
+  .bottom-safe {
+    @apply pb-24;
+  }
+}
+
+/* ==================== 页面过渡动画 ==================== */
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-down {
+  from { opacity: 0; transform: translateY(-12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.9); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.4; }
+}
+
+.animate-page-enter {
+  animation: page-enter 0.35s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out both;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.4s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+.animate-slide-down {
+  animation: slide-down 0.25s ease-out both;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.3s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+/* 列表交错动画 */
+.stagger-list > * {
+  animation: slide-up 0.4s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+.stagger-list > *:nth-child(1) { animation-delay: 0.00s; }
+.stagger-list > *:nth-child(2) { animation-delay: 0.05s; }
+.stagger-list > *:nth-child(3) { animation-delay: 0.10s; }
+.stagger-list > *:nth-child(4) { animation-delay: 0.15s; }
+.stagger-list > *:nth-child(5) { animation-delay: 0.20s; }
+.stagger-list > *:nth-child(6) { animation-delay: 0.25s; }
+.stagger-list > *:nth-child(7) { animation-delay: 0.30s; }
+.stagger-list > *:nth-child(8) { animation-delay: 0.35s; }
+.stagger-list > *:nth-child(n+9) { animation-delay: 0.40s; }
+
+/* 骨架屏 */
+.skeleton {
+  @apply bg-gray-200 rounded-xl animate-pulse;
+}
+
+/* 自定义滚动条 */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #FDBA74;
+  border-radius: 2px;
+}

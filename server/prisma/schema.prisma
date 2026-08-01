@@ -1,0 +1,183 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== 班级 ====================
+model Class {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  grade     Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  students    Student[]
+  advisors    User[]       @relation("AdvisorClass")
+}
+
+// ==================== 用户 (所有角色) ====================
+model User {
+  id           String   @id @default(uuid())
+  username     String   @unique
+  passwordHash String   @map("password_hash")
+  role         String   @default("STUDENT")  // ADMIN | TEACHER | ADVISOR | PARENT | STUDENT
+  name         String
+  phone        String?
+  avatarUrl    String?  @map("avatar_url")
+  isActive     Boolean  @default(true) @map("is_active")
+
+  // ====== 角色关联 ======
+  studentId   String?  @unique @map("student_id")
+  student     Student? @relation(fields: [studentId], references: [id])
+
+  advisorClassId String? @map("advisor_class_id")
+  advisorClass   Class?  @relation("AdvisorClass", fields: [advisorClassId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt  @map("updated_at")
+
+  // 关系
+  sentNotifications     Notification[]  @relation("NotificationSender")
+  receivedNotifications Notification[]  @relation("NotificationReceiver")
+  parentOf              StudentParent[]
+  timeSlots             TimeSlot[]
+  bookedAppointments    Appointment[]     @relation("BookedByUser")
+  treeholeReplies       TreeholeMessage[] @relation("RepliedByUser")
+
+  @@map("users")
+}
+
+// ==================== 学生扩展信息 ====================
+model Student {
+  id          String   @id @default(uuid())
+  user        User?
+  classId     String   @map("class_id")
+  class       Class    @relation(fields: [classId], references: [id])
+  studentNo   String   @unique @map("student_no")
+  qrToken     String?  @unique @map("qr_token")
+  qrTokenExp  DateTime? @map("qr_token_exp")
+
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt  @map("updated_at")
+
+  parents       StudentParent[]
+  appointments  Appointment[]
+  treeholeMsgs  TreeholeMessage[]
+
+  @@map("students")
+}
+
+// ==================== 家长-学生绑定 ====================
+model StudentParent {
+  id        String   @id @default(uuid())
+  parentId  String   @map("parent_id")
+  studentId String   @map("student_id")
+  status    String   @default("ACTIVE")  // PENDING | ACTIVE | REJECTED
+  relation  String   @default("PARENT")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  parent  User    @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([parentId, studentId])
+  @@map("student_parents")
+}
+
+// ==================== 咨询时段 ====================
+model TimeSlot {
+  id          String    @id @default(uuid())
+  teacherId   String    @map("teacher_id")
+  startTime   DateTime  @map("start_time")
+  endTime     DateTime  @map("end_time")
+  maxBookings Int       @default(1) @map("max_bookings")
+  isActive    Boolean   @default(true) @map("is_active")
+
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt  @map("updated_at")
+
+  teacher      User          @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  appointments Appointment[]
+
+  @@map("time_slots")
+}
+
+// ==================== 预约记录 ====================
+model Appointment {
+  id           String   @id @default(uuid())
+  studentId    String   @map("student_id")
+  timeSlotId   String   @map("time_slot_id")
+  bookedById   String   @map("booked_by_id")
+  bookerRole   String   @map("booker_role")     // STUDENT | PARENT
+  status       String   @default("CONFIRMED")   // CONFIRMED | COMPLETED | CANCELLED | NO_SHOW
+  note         String?
+  cancelReason String?  @map("cancel_reason")
+
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt  @map("updated_at")
+
+  student  Student  @relation(fields: [studentId], references: [id])
+  timeSlot TimeSlot @relation(fields: [timeSlotId], references: [id])
+  bookedBy User     @relation("BookedByUser", fields: [bookedById], references: [id])
+
+  @@unique([studentId, timeSlotId])
+  @@map("appointments")
+}
+
+// ==================== 树洞消息 ====================
+model TreeholeMessage {
+  id          String   @id @default(uuid())
+  studentId   String   @map("student_id")
+  isAnonymous Boolean  @default(false) @map("is_anonymous")
+  content     String
+  viewCode    String   @unique @map("view_code")
+  status      String   @default("PENDING")  // PENDING | REPLIED | READ
+
+  reply       String?
+  repliedAt   DateTime? @map("replied_at")
+  repliedById String?  @map("replied_by_id")
+
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt  @map("updated_at")
+
+  student    Student @relation(fields: [studentId], references: [id])
+  repliedBy  User?   @relation("RepliedByUser", fields: [repliedById], references: [id])
+
+  @@map("treehole_messages")
+}
+
+// ==================== 通知 ====================
+model Notification {
+  id          String   @id @default(uuid())
+  senderId    String?  @map("sender_id")
+  receiverId  String   @map("receiver_id")
+  type        String   // APPOINTMENT_CREATED | APPOINTMENT_CANCELLED | APPOINTMENT_REMINDER | TREEHOLE_REPLIED | SYSTEM
+  title       String
+  content     String
+  isRead      Boolean  @default(false) @map("is_read")
+  refId       String?  @map("ref_id")
+  refType     String?  @map("ref_type")
+
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  sender   User? @relation("NotificationSender", fields: [senderId], references: [id], onDelete: SetNull)
+  receiver User  @relation("NotificationReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+// ==================== 系统配置 ====================
+model SystemConfig {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       String
+  description String?
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  updatedBy   String?  @map("updated_by")
+
+  @@map("system_configs")
+}
