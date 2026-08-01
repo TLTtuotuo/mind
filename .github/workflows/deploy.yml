@@ -24,12 +24,8 @@ jobs:
           script: |
             set -e
 
-            # Debug: show current directory contents
-            echo "==> Checking /opt directory..."
-            ls /opt/
-
             # Navigate to the project directory
-            cd /opt/mind
+            cd /app
 
             # Pull latest code
             echo "==> Pulling latest code..."
