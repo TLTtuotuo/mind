@@ -39,7 +39,7 @@ COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 # Copy compiled output
 COPY --from=builder /app/dist ./dist
 
-# Copy prisma directory (schema + migrations needed for runtime `prisma migrate deploy`)
+# Copy prisma directory (schema + migrations + seed)
 COPY --from=builder /app/prisma ./prisma
 
 # Copy and set up entrypoint
