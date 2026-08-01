@@ -36,8 +36,7 @@ jobs:
 
             echo "==> Restarting containers..."
             docker compose -f docker-compose.prod.yml down
-            docker compose -f docker-compose.prod.yml build --pull never
-            docker compose -f docker-compose.prod.yml up -d
+            docker compose -f docker-compose.prod.yml up -d --build
 
             echo "==> Cleaning up..."
             docker image prune -f
