@@ -42,6 +42,9 @@ COPY --from=builder /app/prisma ./prisma
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
+# Fix ownership for non-root user
+RUN chown -R nodejs:nodejs /app
+
 USER nodejs
 EXPOSE 3001
 
