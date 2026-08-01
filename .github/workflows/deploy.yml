@@ -25,7 +25,7 @@ jobs:
             set -e
 
             # Navigate to the project directory
-            cd /app
+            cd /app/mind
 
             # Pull latest code
             echo "==> Pulling latest code..."
