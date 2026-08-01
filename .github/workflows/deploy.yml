@@ -8,13 +8,34 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Deploy via SSH
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and save images
+        run: |
+          docker pull node:20-alpine
+          docker pull nginx:alpine
+          docker build -t mindbridge-server:latest ./server
+          docker build -t mindbridge-client:latest ./client
+          docker save node:20-alpine nginx:alpine mindbridge-server:latest mindbridge-client:latest -o /tmp/images.tar
+
+      - name: Copy images to server
+        uses: appleboy/scp-action@v0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          source: /tmp/images.tar
+          target: /tmp/
+
+      - name: Deploy on server
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -23,15 +44,11 @@ jobs:
           port: ${{ secrets.SSH_PORT || 22 }}
           script: |
             set -e
-
-            # Navigate to the project directory
             cd /app/mind
 
-            # Pull latest code
             echo "==> Pulling latest code..."
             git pull origin main
 
-            # Write .env file with secrets from GitHub Actions
             echo "==> Writing environment configuration..."
             cat > .env << EOF
             POSTGRES_USER=${{ secrets.POSTGRES_USER }}
@@ -41,17 +58,18 @@ jobs:
             CLIENT_URL=http://${{ secrets.SSH_HOST }}
             EOF
 
-            # Stop existing containers, rebuild images, start in detached mode
-            echo "==> Rebuilding and restarting containers..."
+            echo "==> Loading Docker images..."
+            docker load -i /tmp/images.tar
+
+            echo "==> Restarting containers..."
             docker compose -f docker-compose.prod.yml down
-            docker compose -f docker-compose.prod.yml up -d --build
+            docker compose -f docker-compose.prod.yml up -d --pull never
 
-            # Clean up unused images (free disk space)
-            echo "==> Cleaning up unused Docker images..."
+            echo "==> Cleaning up..."
             docker image prune -f
+            rm -f /tmp/images.tar
 
-            # Wait for server health check to pass
-            echo "==> Waiting for server to become healthy..."
+            echo "==> Waiting for server health..."
             for i in $(seq 1 30); do
               STATUS=$(docker inspect --format='{{.State.Health.Status}}' mindbridge-server 2>/dev/null || echo "unknown")
               if [ "$STATUS" = "healthy" ]; then
