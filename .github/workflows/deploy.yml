@@ -21,9 +21,12 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT || 22 }}
-          script_stop: true
           script: |
             set -e
+
+            # Debug: show current directory contents
+            echo "==> Checking /opt directory..."
+            ls /opt/
 
             # Navigate to the project directory
             cd /opt/mind
